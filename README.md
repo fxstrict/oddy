@@ -1,0 +1,43 @@
+# رحلة المعرفة | Knowledge Quest
+
+لعبة مغامرات تعليمية (عربي/إنجليزي) تعمل كـ PWA: تُثبَّت على أندرويد والكمبيوتر وتعمل بدون إنترنت. بدون مكتبات خارجية (HTML + CSS + ES modules).
+
+## تشغيل محلي
+```
+npm run dev        # http://localhost:8080
+npm run check      # lint + 62 اختباراً
+npm run build      # ينتج dist/ مع service worker
+npm run verify     # فحص dist
+```
+
+## الرفع على GitHub Pages
+1. أنشئ مستودعاً وارفع محتوى المجلد (فرع `main`).
+2. Settings ← Pages ← Source: **GitHub Actions**.
+3. أي push على main يبني وينشر تلقائياً (`.github/workflows/pages.yml`). الرابط: `https://USER.github.io/REPO/`.
+المسارات نسبية فتعمل على مسار فرعي.
+
+## النشر ومعاينة الرابط (واتساب/جوجل)
+1. بعد النشر على GitHub Pages يظهر الرابط في Actions ← Deploy. الصورة والوسوم تُحقن تلقائياً بعنوان الموقع.
+2. اختبر المعاينة: ألصق الرابط في واتساب (أرسله لنفسك)، وفي [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) اضغط «Scrape Again» لتحديث الكاش. عند التعديل لاحقاً أضف `?v=2` للرابط.
+3. لجوجل: سجّل الموقع في Google Search Console وأرسل `sitemap.xml` (يُنتج تلقائياً مع `robots.txt`)، وتظهر بيانات اللعبة والاعتماد من JSON-LD ووصف الصفحة. الفهرسة تستغرق أياماً.
+4. حقوق الصور: راجع `ASSETS-NOTICE.md` قبل النشر العلني.
+
+## وصول التحديثات للاعبين
+كل `push` يغيّر ملفات اللعبة ينتج نسخة جديدة (hash) تلقائياً. عند فتح اللاعب اللعبة (أو عودته إليها) تظهر له نافذة «تحديث جديد للعبة — اضغط تحديث» حتى يضغط، ولا يضيع تقدّمه. لا إعداد إضافي. التفاصيل في `STATUS.md`. ملاحظة: داخل APK يلزم بناء APK جديد.
+
+## مراجعة الأسئلة
+`npm run export:questions` ينتج `review/questions-review.csv` يُفتح في Excel لمراجعة المعلم.
+
+## التثبيت
+- أندرويد: Chrome ← «تثبيت التطبيق» (أو زر «تثبيت اللعبة» داخل القائمة).
+- ديسكتوب: أيقونة التثبيت في شريط العنوان (Chrome/Edge).
+- APK اختياري: `npm install && npm run cap:add && npm run cap:sync && npm run cap:open` (يتطلب Android Studio)، أو شغّل workflow «Build Android APK (debug)» من تبويب Actions وحمّل الملف من Artifacts.
+
+## الهيكل
+`src/game/` قواعد اللعب والحفظ (نقية وقابلة للاختبار) · `src/data/questions.js` + `src/data/more/*.js` الأسئلة (20 لكل عالم) · `src/ui/` الواجهة · `assets/img/` الصور · `sw.js` العمل بدون إنترنت.
+
+## الاعتماد والمشاركة
+- العمل: **الطالبة هدى محمد** تحت إشراف **الدكتورة فاطمة سعد** (يظهر في شاشة البداية والقائمة وصورة المشاركة).
+- معاينة الرابط (Open Graph): صورة المشاركة `assets/img/og-image.jpg`. لتوليد عناوين مطلقة صحيحة: `KQ_SITE_URL=https://USER.github.io/REPO/ npm run build` (على GitHub Actions يُستنتج تلقائياً).
+
+- صورة المشاركة تُولَّد من `scripts/og-template.html` (Chromium → JPEG أقل من 300KB).

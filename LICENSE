@@ -1,0 +1,12 @@
+LICENSE PLACEHOLDER
+===================
+
+No license has been chosen yet. Until you pick one, all rights are reserved
+by the project owner (the student author and her supervisor, as credited in the game).
+
+Recommended: MIT License (permissive, simple) for the source code.
+  - Replace this file with the MIT text and put the author's name and year in it.
+  - The game has no third-party code libraries (plain HTML + CSS + ES modules).
+  - Educational content (questions) can be licensed separately,
+    for example CC BY 4.0, if you want others to reuse it.
+  - Images: see ASSETS-NOTICE.md. Do not publish them publicly before their rights are confirmed.

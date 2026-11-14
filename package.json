@@ -1,0 +1,30 @@
+{
+  "name": "knowledge-quest",
+  "version": "0.5.0",
+  "description": "Knowledge Quest (\u0631\u062d\u0644\u0629 \u0627\u0644\u0645\u0639\u0631\u0641\u0629) - offline-first educational adventure game (PWA, Android via Capacitor).",
+  "private": true,
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "lint": "node scripts/lint.mjs",
+    "test": "node --test",
+    "check": "npm run lint && npm run test",
+    "build": "node scripts/build.mjs",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:add": "npx cap add android",
+    "cap:open": "npx cap open android",
+    "verify": "node scripts/verify-dist.mjs",
+    "export:questions": "node scripts/export-questions.mjs"
+  },
+  "optionalDependencies": {},
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/android": "^6.2.0"
+  }
+}
