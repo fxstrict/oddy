@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#a8ece0"/><stop offset="0.6" stop-color="#4fb59c"/><stop offset="1" stop-color="#1f6b55"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff7c2" stop-opacity="0.95"/><stop offset="1" stop-color="#ffd54a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5683a"/><stop offset="1" stop-color="#6b3f22"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky)"/>
+  <!-- far tree canopy -->
+  <g fill="#2f9a6f" stroke="#14301f" stroke-width="9" stroke-linejoin="round">
+    <circle cx="150" cy="170" r="62"/><circle cx="362" cy="165" r="66"/><circle cx="256" cy="120" r="74"/>
+  </g>
+  <g fill="#49b784">
+    <circle cx="238" cy="104" r="26"/><circle cx="138" cy="152" r="18"/><circle cx="346" cy="146" r="20"/>
+  </g>
+  <!-- trunk -->
+  <path d="M226 250 Q232 190 214 150 L298 150 Q280 190 286 250 Z" fill="#7a5230" stroke="#14301f" stroke-width="9" stroke-linejoin="round"/>
+  <!-- glow + star -->
+  <circle cx="256" cy="228" r="96" fill="url(#glow)"/>
+  <polygon points="256,160 275,208 327,211 286,243 300,293 256,264 212,293 226,243 185,211 237,208" fill="#ffc933" stroke="#14301f" stroke-width="9" stroke-linejoin="round"/>
+  <polygon points="256,182 266,212 296,214 272,233 280,262 256,246 232,262 240,233 216,214 246,212" fill="#ffe680"/>
+  <!-- book -->
+  <path d="M70 330 Q160 300 256 336 Q352 300 442 330 L442 410 Q352 382 256 416 Q160 382 70 410 Z" fill="url(#cover)" stroke="#14301f" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M84 322 Q166 296 256 330 L256 400 Q166 372 84 396 Z" fill="#fff3d2" stroke="#14301f" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M428 322 Q346 296 256 330 L256 400 Q346 372 428 396 Z" fill="#ffe9b0" stroke="#14301f" stroke-width="8" stroke-linejoin="round"/>
+  <g stroke="#b98a4e" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M110 336 Q170 320 228 346"/><path d="M110 358 Q170 342 228 368"/>
+    <path d="M402 336 Q342 320 284 346"/><path d="M402 358 Q342 342 284 368"/>
+  </g>
+  <!-- sparkles -->
+  <g fill="#fff7c2" stroke="#14301f" stroke-width="4" stroke-linejoin="round">
+    <path d="M120 250 l7 17 17 7 -17 7 -7 17 -7 -17 -17 -7 17 -7z"/>
+    <path d="M396 246 l6 14 14 6 -14 6 -6 14 -6 -14 -14 -6 14 -6z"/>
+  </g>
+</svg>
