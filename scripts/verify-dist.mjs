@@ -16,6 +16,7 @@ for (const i of manifest.icons) if (!existsSync(join(DIST, i.src))) fail(`icon m
 if (!existsSync(join(DIST, '.nojekyll'))) fail('.nojekyll missing');
 const html = readFileSync(join(DIST, 'index.html'), 'utf8');
 if (html.includes('__SITE_URL__')) fail('index.html still has __SITE_URL__ placeholder');
+if (!/<meta property="og:image" content="https:\/\/[^"]+\/assets\/img\/og-image\.jpg"/.test(html)) fail('og:image must be an absolute https URL ending in /assets/img/og-image.jpg');
 for (const must of ['og:title', 'og:image', 'twitter:card', 'splash-start']) if (!html.includes(must)) fail(`index.html missing ${must}`);
 if (!existsSync(join(DIST, 'assets/img/og-image.jpg'))) fail('og-image.jpg missing');
 // Share preview checks (WhatsApp/Facebook/Google): absolute https image URL, small image, credits, valid JSON-LD.
@@ -36,4 +37,10 @@ if (!list.includes('src/version.js') || !list.includes('src/ui/update.js')) fail
 if (list.includes('version.json')) fail('version.json must not be precached');
 if (!sw.includes('/version.json') || !sw.includes('SKIP_WAITING')) fail('sw.js does not bypass version.json / handle SKIP_WAITING');
 if (!html.includes('id=\"dlg-update\"')) fail('index.html missing the update dialog');
+// What's new + invite/challenge: version.json describes the published game; the share/challenge UI exists.
+const vj = JSON.parse(readFileSync(join(DIST, 'version.json'), 'utf8'));
+if (!Array.isArray(vj.worlds) || !vj.worlds.length || !vj.worlds.every((w) => w.id && w.icon && w.name?.ar && w.name?.en)) fail('version.json must list worlds with ar/en names');
+if (!(vj.levels >= 1) || !(vj.questions >= 1)) fail('version.json must carry levels and questions counts');
+for (const must of ['dlg-share', 'dlg-challenge', 'btn-invite', 'btn-q-share', 'result-share', 'update-news', 'menu-news']) if (!html.includes(`id=\"${must}\"`)) fail(`index.html missing #${must}`);
+for (const must of ['src/ui/share.js', 'src/game/release.js']) if (!list.includes(must)) fail(`not precached: ${must}`);
 console.log(`verify: OK (${list.length} precached entries)`);

@@ -8,9 +8,10 @@ import { WORLDS } from '../src/config.js';
 import ar from '../src/i18n/ar.js';
 
 export const HEADER = [
-  'المعرّف', 'العالم', 'المستوى',
+  'المعرّف', 'العالم', 'المستوى', 'الفئة العمرية', 'التصنيف',
   'السؤال', 'الإجابة الصحيحة', 'الخيارات الخاطئة',
   'Question (EN)', 'Correct answer (EN)', 'Wrong options (EN)',
+  'الشرح', 'Explanation (EN)', 'المصدر',
   'ملاحظات المعلم', 'الحالة (صحيح / يحتاج تعديل)',
 ];
 
@@ -24,9 +25,10 @@ export function buildRows() {
       const right = q.o[q.c];
       const wrong = q.o.filter((_, i) => i !== q.c);
       rows.push([
-        q.id, ar[`world.${w.id}`], q.d,
+        q.id, ar[`world.${w.id}`], q.d, ar[`age.${q.age}`]?.replace(/^\S+\s/, '') ?? q.age, q.topic ?? '',
         q.q.ar, right.ar, wrong.map((x) => x.ar).join(' | '),
         q.q.en, right.en, wrong.map((x) => x.en).join(' | '),
+        q.e?.ar ?? '', q.e?.en ?? '', '',
         '', '',
       ]);
     }
