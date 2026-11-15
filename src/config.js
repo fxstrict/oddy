@@ -11,6 +11,11 @@ export const CONFIG = Object.freeze({
   DEFAULT_DIFFICULTY: 'normal',
   LEVELS_PER_WORLD: 2,
   ROUND_SIZE: 5,
+  AGES: Object.freeze([1, 2, 3]), // 1 = kids 6-9, 2 = juniors 10-14, 3 = teens/adults 15+
+  DEFAULT_AGE: 2,
+  NEXT_AGE_MIX: 1, // questions per round borrowed from the next age group
+  REVIEW_DAYS: Object.freeze([1, 3]), // spaced repetition: a missed question returns after 1 day, then after 3
+  MAX_ASKED: 600,
   AVATARS: Object.freeze(['🦊', '🐼', '🦉', '🐯', '🐸', '🦄', '🐙', '🚀']),
 });
 

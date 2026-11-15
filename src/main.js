@@ -1,13 +1,14 @@
 import { CONFIG } from './config.js';
 import { applyLanguage, t, tf } from './i18n/index.js';
-import { loadPrefs, savePrefs } from './ui/prefs.js';
+import { loadPrefs, savePrefs, ageOf } from './ui/prefs.js';
 import { createRouter } from './ui/router.js';
 import { createGame } from './ui/game.js';
 import { playSound } from './ui/sound.js';
 import { runSplash } from './ui/splash.js';
 import { runIntro } from './ui/intro.js';
 import { createUpdatePrompt } from './ui/update.js';
-import { ACHIEVEMENTS, loadSave, writeSave, totalStars } from './game/save.js';
+import { createShare, parseChallenge } from './ui/share.js';
+import { ACHIEVEMENTS, loadSave, writeSave, totalStars, baselineSeen, newWorldIds, hasNewContent } from './game/save.js';
 
 function getStorage() {
   try {
@@ -19,7 +20,8 @@ function getStorage() {
 
 const storage = getStorage();
 const prefs = loadPrefs(storage);
-let save = loadSave(storage);
+let save = baselineSeen(loadSave(storage)); // first run: everything that exists now counts as seen
+const incoming = parseChallenge(window.location.hash); // challenge link from a friend (#q=... / #w=...)
 let hasStoredPrefs = false;
 try {
   hasStoredPrefs = storage?.getItem(CONFIG.PREFS_KEY) != null;
@@ -66,6 +68,16 @@ const game = createGame({
 
 // "New update available - press Update": asked on every open (after the splash), on returning to the
 // game and when the connection comes back; never in the middle of a round.
+const share = createShare({
+  doc: document,
+  getLang: () => prefs.lang,
+  getSave: () => save,
+  toast,
+  startChallenge: (world, level, opts) => game.startChallenge(world, level, opts),
+  goMap: () => router.show('play'),
+});
+game.setSharer(share);
+
 const updater = createUpdatePrompt({
   doc: document,
   getLang: () => prefs.lang,
@@ -113,7 +125,19 @@ function updateProfile(patch) {
   renderAvatars();
 }
 
+function renderNews() {
+  const btn = $('menu-news');
+  const ids = newWorldIds(save);
+  const any = hasNewContent(save);
+  btn.hidden = !any;
+  if (!any) return;
+  btn.textContent = ids.length === 1 ? tf(prefs.lang, 'new.menuWorld', { name: t(prefs.lang, `world.${ids[0]}`) })
+    : ids.length > 1 ? tf(prefs.lang, 'new.menuWorlds', { n: ids.length })
+    : t(prefs.lang, 'new.menuLevels');
+}
+
 function renderStatic() {
+  renderNews();
   $('chip-coins').textContent = `${save.profile.avatar} 🪙 ${save.coins} · ★ ${totalStars(save)}`;
   $('chip-coins').setAttribute('aria-label', `${t(prefs.lang, 'top.coins')}: ${save.coins}`);
   const hello = $('menu-hello');
@@ -135,6 +159,8 @@ function render() {
 
   $('opt-lang-' + prefs.lang).checked = true;
   $('opt-difficulty').value = prefs.difficulty;
+  $('opt-age').value = String(ageOf(prefs));
+  document.body.dataset.age = String(ageOf(prefs));
   $('opt-sound').checked = !prefs.muted;
   $('opt-motion').checked = prefs.reducedMotion;
   if (document.activeElement !== $('opt-name')) $('opt-name').value = save.profile.name;
@@ -152,7 +178,33 @@ function update(patch) {
 }
 
 router.show('menu', { focus: false });
+if (incoming) {
+  try {
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search); // a refresh must not reopen it
+  } catch {
+    /* ignore */
+  }
+}
+$('menu-news').addEventListener('click', () => router.show('play'));
 render();
+// "Who is playing?" is asked once. Kids get the relaxed difficulty (no timer); it can be changed in Settings.
+function askAge() {
+  return new Promise((resolve) => {
+    const dlg = $('dlg-age');
+    const done = (age) => {
+      dlg.close();
+      if (age) update({ age, ...(age === 1 ? { difficulty: 'easy' } : {}) });
+      resolve();
+    };
+    dlg.querySelectorAll('[data-age]').forEach((b) => (b.onclick = () => done(Number(b.dataset.age))));
+    dlg.oncancel = (e) => {
+      e.preventDefault();
+      done(0);
+    };
+    dlg.showModal();
+    $('age-title').focus();
+  });
+}
 async function showIntro() {
   await runIntro(document, () => prefs.lang);
   if (!save.seenIntro) {
@@ -163,7 +215,12 @@ async function showIntro() {
 runSplash(document, () => prefs.lang).then(async () => {
   playSound('click', prefs.muted);
   if (!save.seenIntro) await showIntro(); // never stack the update dialog on top of the intro
-  updater.check({ force: true });
+  if (!prefs.age) await askAge();
+  // The update prompt comes first (it lists what is new); a friend's challenge opens right after it is dismissed.
+  const shown = await Promise.race([updater.check({ force: true }), new Promise((r) => setTimeout(() => r(false), 3000))]);
+  const openChallenge = () => incoming && share.open(incoming);
+  if (shown) $('dlg-update').addEventListener('close', openChallenge, { once: true });
+  else openChallenge();
 });
 $('btn-intro-replay').addEventListener('click', showIntro);
 
@@ -174,6 +231,10 @@ document.querySelectorAll('input[name="opt-lang"]').forEach((input) => {
 });
 $('opt-difficulty').addEventListener('change', (e) => {
   if (CONFIG.DIFFICULTIES.includes(e.target.value)) update({ difficulty: e.target.value });
+});
+$('opt-age').addEventListener('change', (e) => {
+  const age = Number(e.target.value);
+  if (CONFIG.AGES.includes(age)) update({ age });
 });
 $('opt-sound').addEventListener('change', (e) => update({ muted: !e.target.checked }));
 $('opt-motion').addEventListener('change', (e) => update({ reducedMotion: e.target.checked }));
@@ -188,6 +249,7 @@ $('btn-reset').addEventListener('click', async () => {
   save = loadSave(null);
   save.profile = keep;
   save.seenIntro = true;
+  save = baselineSeen(save);
   writeSave(storage, save);
   render();
 });
