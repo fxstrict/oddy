@@ -3,7 +3,7 @@
 import { CONFIG, WORLDS } from '../config.js';
 import { QUESTIONS } from '../data/questions.js';
 import { tf } from '../i18n/index.js';
-import { shuffle } from '../game/engine.js';
+import { shuffle, isChoice } from '../game/engine.js';
 
 const cleanName = (v) => (typeof v === 'string' ? v.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20) : '');
 
@@ -12,9 +12,10 @@ export function baseUrl(loc) {
   return `${loc.origin}${loc.pathname}`;
 }
 
+// Only tap-an-option questions can travel as a link challenge (typing/ordering/matching need the full game screen).
 export function findQuestion(bank, id) {
   for (const worldId of Object.keys(bank)) {
-    const q = bank[worldId].find((x) => x.id === id);
+    const q = bank[worldId].find((x) => x.id === id && isChoice(x));
     if (q) return { world: worldId, q };
   }
   return null;

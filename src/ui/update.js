@@ -2,7 +2,7 @@
 // online) it asks the network for version.json; if the published version differs from the running build
 // (or a downloaded update is already waiting), a dialog says "new update - press Update" until the player does.
 // Progress lives in localStorage, which the update never touches.
-import { BUILD_VERSION } from '../version.js';
+import { BUILD_VERSION, BUILD_SEMVER } from '../version.js';
 import { t as tt, tf } from '../i18n/index.js';
 import { QUESTIONS } from '../data/questions.js';
 import { WORLDS } from '../config.js';
@@ -46,8 +46,9 @@ export function localRelease() {
 /** Lines for the "what's new" list in the update dialog (empty when the update has nothing to announce). */
 export function newsLines(info, lang, local = localRelease()) {
   const d = diffRelease(local, info);
-  if (!d) return [];
-  const lines = d.newWorlds.map((w) => tf(lang, 'update.newWorld', { name: `${w.icon} ${w.name[lang] || w.name.en}` }));
+  const ver = typeof info?.semver === 'string' && /^[0-9a-z.+-]{1,20}$/i.test(info.semver) && info.semver !== BUILD_SEMVER ? [`🆕 ${tf(lang, 'update.version', { v: info.semver })}`] : [];
+  if (!d) return ver;
+  const lines = ver.concat(d.newWorlds.map((w) => tf(lang, 'update.newWorld', { name: `${w.icon} ${w.name[lang] || w.name.en}` })));
   if (d.newLevels) lines.push(tf(lang, 'update.newLevels', { n: d.newLevels }));
   if (d.newQuestions) lines.push(tf(lang, 'update.newQuestions', { n: d.newQuestions }));
   const note = d.notes && (d.notes[lang] || d.notes.en || d.notes.ar);

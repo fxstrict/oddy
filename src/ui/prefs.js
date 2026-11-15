@@ -9,6 +9,7 @@ export function defaultPrefs() {
     difficulty: CONFIG.DEFAULT_DIFFICULTY,
     reducedMotion: false,
     muted: false,
+    read: false, // read questions aloud automatically (speech synthesis)
     age: 0, // 0 = not chosen yet (the game then uses CONFIG.DEFAULT_AGE and asks once)
   };
 }
@@ -23,6 +24,7 @@ export function sanitizePrefs(raw) {
     difficulty: CONFIG.DIFFICULTIES.includes(raw.difficulty) ? raw.difficulty : base.difficulty,
     reducedMotion: typeof raw.reducedMotion === 'boolean' ? raw.reducedMotion : base.reducedMotion,
     muted: typeof raw.muted === 'boolean' ? raw.muted : base.muted,
+    read: typeof raw.read === 'boolean' ? raw.read : base.read,
     age: CONFIG.AGES.includes(raw.age) ? raw.age : 0,
   };
 }
