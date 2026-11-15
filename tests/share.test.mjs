@@ -31,3 +31,15 @@ test('JSON-LD is valid and names the student and supervisor', () => {
   assert.match(ld.creator.name, /هدى محمد/);
   assert.match(ld.contributor.name, /فاطمة سعد/);
 });
+
+test('source index.html has an absolute https og:image even without a build (raw Pages deploy)', () => {
+  const m = html.match(/<meta property="og:image" content="([^"]+)"/);
+  assert.match(m[1], /^https:\/\/[^/]+\/.*assets\/img\/og-image\.jpg$/);
+  assert.ok(!html.includes('__SITE_URL__'));
+});
+
+test('Android icon/splash sources exist for @capacitor/assets', () => {
+  for (const f of ['icon-only', 'icon-foreground', 'icon-background', 'splash', 'splash-dark']) {
+    assert.ok(existsSync(new URL(`../resources/${f}.png`, import.meta.url)), f);
+  }
+});

@@ -7,11 +7,15 @@ test('review export has one row per question with the right answer separated fro
   const total = Object.values(QUESTIONS).reduce((n, list) => n + list.length, 0);
   const rows = buildRows();
   assert.equal(rows.length, total);
+  const col = (name) => HEADER.indexOf(name);
+  const [qAr, rightAr, wrongAr, qEn, rightEn, wrongEn, exAr, exEn] = ['السؤال', 'الإجابة الصحيحة', 'الخيارات الخاطئة', 'Question (EN)', 'Correct answer (EN)', 'Wrong options (EN)', 'الشرح', 'Explanation (EN)'].map(col);
+  assert.ok([qAr, rightAr, wrongAr, qEn, rightEn, wrongEn, exAr, exEn, col('الفئة العمرية'), col('التصنيف'), col('المصدر')].every((i) => i >= 0));
   for (const r of rows) {
     assert.equal(r.length, HEADER.length);
-    assert.ok(r[3] && r[4] && r[5] && r[6] && r[7] && r[8], `incomplete row ${r[0]}`);
-    assert.ok(!r[5].split(' | ').includes(r[4]) || new Set(r[5].split(' | ')).size < 3, `${r[0]} wrong options contain the answer`);
-    assert.equal(r[5].split(' | ').length, 3, `${r[0]} should list 3 wrong options`);
+    assert.ok(r[qAr] && r[rightAr] && r[wrongAr] && r[qEn] && r[rightEn] && r[wrongEn], `incomplete row ${r[0]}`);
+    assert.ok(r[exAr] && r[exEn] && r[col('الفئة العمرية')], `${r[0]} needs an explanation and an age group`);
+    assert.ok(!r[wrongAr].split(' | ').includes(r[rightAr]) || new Set(r[wrongAr].split(' | ')).size < 3, `${r[0]} wrong options contain the answer`);
+    assert.equal(r[wrongAr].split(' | ').length, 3, `${r[0]} should list 3 wrong options`);
   }
 });
 

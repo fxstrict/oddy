@@ -19,14 +19,14 @@ test('defaults: Arabic, normal difficulty', () => {
 });
 
 test('sanitize rejects invalid values', () => {
-  const p = sanitizePrefs({ lang: 'xx', difficulty: 'insane', muted: 'yes', reducedMotion: 1 });
+  const p = sanitizePrefs({ lang: 'xx', difficulty: 'insane', muted: 'yes', reducedMotion: 1, age: 9 });
   assert.deepEqual(p, defaultPrefs());
 });
 
 test('save then load round-trips', () => {
   const s = fakeStorage();
-  savePrefs(s, { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true });
-  assert.deepEqual(loadPrefs(s), { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true });
+  savePrefs(s, { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3 });
+  assert.deepEqual(loadPrefs(s), { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3 });
 });
 
 test('corrupt JSON falls back to defaults without throwing', () => {

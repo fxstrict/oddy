@@ -28,5 +28,6 @@ test('every data-i18n key used in index.html exists in both dictionaries', async
 });
 
 test('html has no remote resources (offline-first)', () => {
-  assert.doesNotMatch(html, /(?:src|href)="https?:\/\//);
+  // The canonical link is metadata for crawlers, not a resource the page loads.
+  assert.doesNotMatch(html.replace(/<link rel="canonical"[^>]*>/, ''), /(?:src|href)="https?:\/\//);
 });
