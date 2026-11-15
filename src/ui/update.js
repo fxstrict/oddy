@@ -3,7 +3,10 @@
 // (or a downloaded update is already waiting), a dialog says "new update - press Update" until the player does.
 // Progress lives in localStorage, which the update never touches.
 import { BUILD_VERSION } from '../version.js';
-import { tf } from '../i18n/index.js';
+import { t as tt, tf } from '../i18n/index.js';
+import { QUESTIONS } from '../data/questions.js';
+import { WORLDS } from '../config.js';
+import { describeBuild, diffRelease } from '../game/release.js';
 
 export const DEV_VERSION = 'dev';
 const MIN_GAP_MS = 60 * 1000; // do not hit the network more than once a minute
@@ -15,16 +18,41 @@ export function isNewVersion(current, remote) {
   return typeof current === 'string' && typeof remote === 'string' && current !== '' && remote !== '' && current !== DEV_VERSION && remote !== current;
 }
 
-/** Reads the published version from the network (never from a cache). Returns null when offline/unavailable. */
-export async function fetchRemoteVersion(fetchFn) {
+/** Reads the published version.json from the network (never from a cache). Returns null when offline/unavailable. */
+export async function fetchRemoteInfo(fetchFn) {
   try {
     const res = await fetchFn(`version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res || !res.ok) return null;
     const data = await res.json();
-    return typeof data?.version === 'string' ? data.version : null;
+    return typeof data?.version === 'string' ? data : null;
   } catch {
     return null;
   }
+}
+
+export async function fetchRemoteVersion(fetchFn) {
+  return (await fetchRemoteInfo(fetchFn))?.version ?? null;
+}
+
+/** Description of the running build, to compare with the published one (what is new in the update). */
+export function localRelease() {
+  return describeBuild({
+    worlds: WORLDS,
+    questions: Object.values(QUESTIONS).reduce((n, list) => n + list.length, 0),
+    names: (id) => ({ ar: tt('ar', `world.${id}`), en: tt('en', `world.${id}`) }),
+  });
+}
+
+/** Lines for the "what's new" list in the update dialog (empty when the update has nothing to announce). */
+export function newsLines(info, lang, local = localRelease()) {
+  const d = diffRelease(local, info);
+  if (!d) return [];
+  const lines = d.newWorlds.map((w) => tf(lang, 'update.newWorld', { name: `${w.icon} ${w.name[lang] || w.name.en}` }));
+  if (d.newLevels) lines.push(tf(lang, 'update.newLevels', { n: d.newLevels }));
+  if (d.newQuestions) lines.push(tf(lang, 'update.newQuestions', { n: d.newQuestions }));
+  const note = d.notes && (d.notes[lang] || d.notes.en || d.notes.ar);
+  if (note) lines.push(`✨ ${note}`);
+  return lines;
 }
 
 function waitForInstalled(reg, timeoutMs) {
@@ -96,8 +124,14 @@ export function createUpdatePrompt({ doc, getLang, canShow = () => true, nav = n
   let lastCheck = 0;
   let snoozedUntil = 0;
 
+  let lastInfo = null;
   async function updateAvailable() {
-    if (isNewVersion(BUILD_VERSION, await fetchRemoteVersion(doFetch))) return true;
+    lastInfo = null;
+    const info = await fetchRemoteInfo(doFetch);
+    if (isNewVersion(BUILD_VERSION, info?.version)) {
+      lastInfo = info;
+      return true;
+    }
     // An update that was already downloaded in the background and is waiting for the player's OK.
     const reg = await Promise.resolve(nav.serviceWorker?.getRegistration?.()).catch(() => null);
     return !!(reg && reg.waiting && nav.serviceWorker.controller);
@@ -110,6 +144,20 @@ export function createUpdatePrompt({ doc, getLang, canShow = () => true, nav = n
     now_.disabled = on;
     $('update-later').disabled = on;
     now_.textContent = tf(getLang(), on ? 'update.working' : 'update.now');
+  }
+
+  function renderNews() {
+    const ul = $('update-news');
+    if (!ul) return;
+    const lines = lastInfo ? newsLines(lastInfo, getLang()) : [];
+    ul.replaceChildren(
+      ...lines.map((text) => {
+        const li = doc.createElement('li');
+        li.textContent = text;
+        return li;
+      }),
+    );
+    ul.hidden = lines.length === 0;
   }
 
   function showError(on) {
@@ -128,6 +176,7 @@ export function createUpdatePrompt({ doc, getLang, canShow = () => true, nav = n
     if (blocked() || dlg.open) return false; // the player may have started a round while we were asking
     showError(false);
     setWorking(false);
+    renderNews();
     dlg.showModal();
     $('update-now').focus();
     return true;
@@ -164,5 +213,5 @@ export function createUpdatePrompt({ doc, getLang, canShow = () => true, nav = n
     win.addEventListener('online', () => check());
   }
 
-  return { check };
+  return { check, newsLines: () => (lastInfo ? newsLines(lastInfo, getLang()) : []) };
 }

@@ -1,6 +1,8 @@
 // Gameplay UI: world map, level dialog, question screen, pause and result dialogs.
 import { CONFIG, WORLDS, FUTURE_ISLANDS } from '../config.js';
 import { QUESTIONS } from '../data/questions.js';
+import { FACTS } from '../data/facts.js';
+import { ageOf } from './prefs.js';
 import { tf } from '../i18n/index.js';
 import * as engine from '../game/engine.js';
 import * as store from '../game/save.js';
@@ -20,6 +22,7 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
   let remainingMs = 0;
   let timerId = null;
   let paused = false;
+  let sharer = null; // set by main.js once the share module exists
 
   // ---------- dialogs ----------
   function openDialog(dlg) {
@@ -68,6 +71,14 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
       b.setAttribute('aria-label', worldLabel(w));
       if (!unlocked) b.setAttribute('aria-disabled', 'true');
       b.innerHTML = `<span class="node__icon" aria-hidden="true">${unlocked ? w.icon : '🔒'}</span><span class="node__stars" aria-hidden="true">${unlocked ? '★' + store.worldStars(save, w.id) : ''}</span>`;
+      const mark = store.newMark(save, w.id);
+      if (mark) {
+        const tag = doc.createElement('span');
+        tag.className = 'badge-new';
+        tag.setAttribute('aria-hidden', 'true');
+        tag.textContent = tr(mark === 'world' ? 'new.badge' : 'new.badgeLevels');
+        b.append(tag);
+      }
       b.addEventListener('click', () => openWorld(w.id));
       return b;
     });
@@ -81,6 +92,7 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
       return s;
     });
     map.replaceChildren(...nodes, ...future);
+    renderReviewButton();
 
     $('world-list').replaceChildren(
       ...WORLDS.map((w) => {
@@ -94,6 +106,13 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
         b.innerHTML = `<span class="world-card__icon" aria-hidden="true">${unlocked ? w.icon : '🔒'}</span><span class="world-card__name"></span><span class="world-card__stars"></span>`;
         b.querySelector('.world-card__name').textContent = tr(`world.${w.id}`);
         b.querySelector('.world-card__stars').textContent = unlocked ? `★ ${store.worldStars(save, w.id)}/${store.maxWorldStars()}` : tr('play.locked');
+        const mark = store.newMark(save, w.id);
+        if (mark) {
+          const tag = doc.createElement('span');
+          tag.className = 'badge-new badge-new--inline';
+          tag.textContent = tr(mark === 'world' ? 'new.badge' : 'new.badgeLevels');
+          b.querySelector('.world-card__name').append(' ', tag);
+        }
         b.addEventListener('click', () => openWorld(w.id));
         li.append(b);
         return li;
@@ -101,17 +120,52 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
     );
   }
 
-  function openWorld(worldId) {
+  function renderReviewButton() {
+    const btn = $('btn-review');
+    if (!btn) return;
     const save = getSave();
+    const n = Object.keys(save.review).length;
+    btn.hidden = n === 0;
+    if (!n) return;
+    const due = store.reviewDue(save, store.dayNumber());
+    btn.textContent = tr('review.btn', { n }) + (due > 0 ? tr('review.due', { d: due }) : '');
+  }
+
+  function startReview() {
+    const ids = store.reviewQueue(getSave(), store.dayNumber());
+    const questions = engine.buildReview(QUESTIONS, ids);
+    if (!questions.length) {
+      toast(tr('review.none'));
+      return;
+    }
+    ctx = { review: true, world: 'review', level: 0 };
+    round = engine.newRound(questions, 'easy'); // practice is relaxed: no timer, many lives
+    paused = false;
+    router.show('game');
+    renderQuestion();
+    startTimer();
+  }
+
+  function openWorld(worldId) {
+    let save = getSave();
     if (!store.isWorldUnlocked(save, worldId)) {
       toast(tr('play.locked'));
       playSound('wrong', getPrefs().muted);
       return;
     }
     const w = WORLDS.find((x) => x.id === worldId);
+    if (store.newMark(save, worldId)) {
+      setSave(store.markSeen(save, worldId));
+      renderMap();
+    }
+    $('dlg-world-story').textContent = tr(`story.${worldId}`) === `story.${worldId}` ? '' : tr(`story.${worldId}`);
     $('dlg-world-title').textContent = `${w.icon} ${tr(`world.${worldId}`)}`;
+    save = getSave();
     $('dlg-world-stars').textContent = tr('play.stars', { n: store.worldStars(save, worldId), max: store.maxWorldStars() });
     const wrap = $('dlg-world-levels');
+    const m = store.worldMastery(save, QUESTIONS, worldId, ageOf(getPrefs()));
+    $('dlg-world-mastery').textContent = tr('mastery.label', { p: m.pct });
+    $('dlg-world-mastery-bar').value = m.pct;
     wrap.replaceChildren();
     for (let lvl = 1; lvl <= CONFIG.LEVELS_PER_WORLD; lvl++) {
       const open = store.isLevelUnlocked(save, worldId, lvl);
@@ -135,9 +189,17 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
   }
 
   // ---------- playing ----------
-  function start(worldId, level) {
+  function start(worldId, level, opts = {}) {
     ctx = { world: worldId, level };
-    round = engine.newRound(engine.buildRound(QUESTIONS, worldId, level), getPrefs().difficulty);
+    if (opts.friendStars) {
+      // Friend challenge: play the same level. Without that level unlocked it is a guest game (nothing is saved).
+      ctx.friendStars = opts.friendStars;
+      ctx.from = opts.from;
+      ctx.guest = !store.isLevelUnlocked(getSave(), worldId, level);
+    }
+    const plan = engine.planRound(QUESTIONS, worldId, level, { age: ageOf(getPrefs()), asked: getSave().asked });
+    if (!ctx.guest) setSave({ ...getSave(), asked: plan.asked });
+    round = engine.newRound(plan.questions, getPrefs().difficulty);
     paused = false;
     router.show('game');
     renderQuestion();
@@ -185,7 +247,7 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
     if (!round) return;
     const q = engine.current(round);
     const l = lang();
-    $('game-title').textContent = `${tr(`world.${ctx.world}`)} · ${tr('level.label', { n: ctx.level })}`;
+    $('game-title').textContent = ctx.review ? tr('review.title') : `${tr(`world.${ctx.world}`)} · ${tr('level.label', { n: ctx.level })}`;
     $('hud-progress').textContent = tr('game.question', { a: round.index + 1, b: round.questions.length });
     $('hud-lives').textContent = '❤'.repeat(Math.max(0, round.lives)) + '🖤'.repeat(Math.max(0, round.maxLives - round.lives));
     $('hud-lives').setAttribute('aria-label', tr('game.lives', { n: round.lives }));
@@ -219,9 +281,15 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
     const next = $('btn-next');
     next.hidden = !answered;
     next.textContent = tr(engine.isOver(round) ? 'game.finish' : 'game.next');
+    const qs = $('btn-q-share');
+    qs.hidden = !answered || !sharer;
+    qs.textContent = tr('share.question');
     const fb = $('q-feedback');
     fb.textContent = !answered ? '' : round.chosen === -1 ? tr('game.timeout') : q.options[round.chosen].ok ? tr('game.correct') : tr('game.wrong');
     fb.dataset.state = !answered ? '' : round.chosen >= 0 && q.options[round.chosen].ok ? 'ok' : 'bad';
+    const why = answered ? q.e?.[l] : '';
+    $('q-explain').hidden = !why;
+    $('q-explain').textContent = why ? `${tr('game.explain')} ${why}` : '';
     if (!answered) box.firstElementChild?.focus?.({ preventScroll: true });
   }
 
@@ -231,6 +299,7 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
     engine.answer(round, i);
     const ok = i >= 0 && engine.current(round).options[i].ok;
     playSound(ok ? 'correct' : 'wrong', getPrefs().muted);
+    if (!ctx.guest) setSave(store.recordAnswer(getSave(), engine.current(round).id, ok, store.dayNumber()));
     renderQuestion();
     $('btn-next').focus();
   }
@@ -246,14 +315,20 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
   function finish() {
     stopTimer();
     const res = engine.roundResult(round);
-    const { save, reward, newAchievements } = store.applyRoundResult(getSave(), { world: ctx.world, level: ctx.level, ...res });
-    setSave(save);
+    let reward = { coins: 0 };
+    let newAchievements = [];
+    if (!ctx.guest && !ctx.review) {
+      const applied = store.applyRoundResult(getSave(), { world: ctx.world, level: ctx.level, ...res });
+      reward = applied.reward;
+      newAchievements = applied.newAchievements;
+      setSave(applied.save);
+    }
     playSound(res.won ? 'win' : 'lose', getPrefs().muted);
 
-    $('result-title').textContent = tr(res.won ? 'result.win' : 'result.fail');
-    $('result-stars').textContent = stars(res.stars);
+    $('result-title').textContent = ctx.review ? tr('review.done') : tr(res.won ? 'result.win' : 'result.fail');
+    $('result-stars').textContent = ctx.review ? '' : stars(res.stars);
     $('result-score').textContent = tr('result.score', { c: res.correct, t: res.total });
-    $('result-coins').textContent = reward.coins > 0 ? tr('result.coins', { n: reward.coins }) : res.won ? tr('result.noCoins') : '';
+    $('result-coins').textContent = ctx.review ? tr('review.left', { n: Object.keys(getSave().review).length }) : reward.coins > 0 ? tr('result.coins', { n: reward.coins }) : res.won ? tr('result.noCoins') : '';
     $('result-ach').replaceChildren(
       ...newAchievements.map((id) => {
         const li = doc.createElement('li');
@@ -261,7 +336,18 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
         return li;
       }),
     );
-    const hasNext = res.won && ctx.level < CONFIG.LEVELS_PER_WORLD;
+    const vs = $('result-vs');
+    vs.textContent = '';
+    if (ctx.friendStars) {
+      const key = res.stars > ctx.friendStars ? 'challenge.beat' : res.stars === ctx.friendStars ? 'challenge.tie' : 'challenge.lose';
+      vs.textContent = tr(key, { name: ctx.from, a: res.stars, b: ctx.friendStars }) + (ctx.guest ? ` ${tr('challenge.guest')}` : '');
+    }
+    const pool = ctx.review ? Object.values(FACTS).flat() : FACTS[ctx.world] || [];
+    const fact = pool.length ? pool[Math.floor(Math.random() * pool.length)][lang()] : '';
+    $('result-fact').hidden = !fact;
+    $('result-fact').textContent = fact ? `${tr('fact.title')} ${fact}` : '';
+    $('result-share').hidden = !(res.won && sharer && !ctx.review);
+    const hasNext = res.won && ctx.level < CONFIG.LEVELS_PER_WORLD && !ctx.guest && !ctx.review;
     $('result-next').hidden = !hasNext;
     openDialog($('dlg-result'));
     (hasNext ? $('result-next') : $('result-again')).focus();
@@ -288,7 +374,8 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
   function restart() {
     closeDialog($('dlg-pause'));
     closeDialog($('dlg-result'));
-    if (ctx) start(ctx.world, ctx.level);
+    if (ctx?.review) startReview();
+    else if (ctx) start(ctx.world, ctx.level, ctx.friendStars ? { friendStars: ctx.friendStars, from: ctx.from } : {});
   }
 
   function quit() {
@@ -311,10 +398,13 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
     resume();
   });
   $('btn-next').addEventListener('click', next);
+  $('btn-review').addEventListener('click', startReview);
   $('btn-hint').addEventListener('click', () => {
     if (engine.useHint(round) >= 0) renderQuestion();
   });
   $('result-again').addEventListener('click', restart);
+  $('result-share').addEventListener('click', () => sharer?.shareLevel(ctx.world, ctx.level, round?.result?.stars ?? 0));
+  $('btn-q-share').addEventListener('click', () => sharer?.shareQuestion(engine.current(round).id));
   $('result-map').addEventListener('click', quit);
   $('result-next').addEventListener('click', () => {
     const c = ctx;
@@ -333,6 +423,11 @@ export function createGame({ doc, router, getPrefs, getSave, setSave, toast }) {
 
   return {
     renderMap,
+    setSharer(s) {
+      sharer = s;
+    },
+    startChallenge: start,
+    goMap: () => router.show('play'),
     refresh() {
       if (round && router.current === 'game' && !round.done) renderQuestion();
     },

@@ -9,8 +9,11 @@ export function defaultPrefs() {
     difficulty: CONFIG.DEFAULT_DIFFICULTY,
     reducedMotion: false,
     muted: false,
+    age: 0, // 0 = not chosen yet (the game then uses CONFIG.DEFAULT_AGE and asks once)
   };
 }
+
+export const ageOf = (prefs) => (CONFIG.AGES.includes(prefs?.age) ? prefs.age : CONFIG.DEFAULT_AGE);
 
 export function sanitizePrefs(raw) {
   const base = defaultPrefs();
@@ -20,6 +23,7 @@ export function sanitizePrefs(raw) {
     difficulty: CONFIG.DIFFICULTIES.includes(raw.difficulty) ? raw.difficulty : base.difficulty,
     reducedMotion: typeof raw.reducedMotion === 'boolean' ? raw.reducedMotion : base.reducedMotion,
     muted: typeof raw.muted === 'boolean' ? raw.muted : base.muted,
+    age: CONFIG.AGES.includes(raw.age) ? raw.age : 0,
   };
 }
 
