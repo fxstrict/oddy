@@ -16,13 +16,57 @@ export function shuffle(list, rng = Math.random) {
   return a;
 }
 
+/** Question types that are answered by tapping one of `options` (hints and question links work only for these). */
+export const isChoice = (q) => !q.type || q.type === 'mc' || q.type === 'tf';
+
 const toRound = (picked, rng) =>
-  picked.map((q) => ({
-    id: q.id,
-    q: q.q,
-    e: q.e || null,
-    options: shuffle(q.o.map((text, i) => ({ text, ok: i === q.c })), rng),
-  }));
+  picked.map((q) => {
+    const base = { id: q.id, q: q.q, e: q.e || null, type: q.type || 'mc' };
+    if (q.type === 'fill') return { ...base, accept: q.a };
+    if (q.type === 'order') return { ...base, items: shuffle(q.items.map((it, pos) => ({ text: it, pos })), rng) };
+    if (q.type === 'match') {
+      return {
+        ...base,
+        left: q.pairs.map((p) => p.l),
+        right: shuffle(q.pairs.map((p, forLeft) => ({ text: p.r, forLeft })), rng),
+      };
+    }
+    // tf keeps its fixed order (true first); mc options are shuffled
+    const options = q.o.map((text, i) => ({ text, ok: i === q.c }));
+    return { ...base, options: q.type === 'tf' ? options : shuffle(options, rng) };
+  });
+
+/** Round questions made of the given bank questions (used by the daily challenge and practice). */
+export const roundFromQuestions = (list, rng = Math.random) => toRound(list, rng);
+
+/** Normalizes a typed answer so spelling variants match: case, Arabic diacritics/tatweel, أإآ→ا, ى→ي, ة→ه, a leading "ال", digits. */
+export function normalizeAnswer(text) {
+  let t = String(text ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[.,;:!?؟،؛"'«»()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/^ال.{2,}/.test(t)) t = t.slice(2);
+  return t;
+}
+
+export function checkText(q, text, lang) {
+  const typed = normalizeAnswer(text);
+  return !!typed && (q.accept?.[lang] || []).some((a) => normalizeAnswer(a) === typed);
+}
+
+/** `picked` = item positions in the order the player placed them. */
+export const checkOrder = (q, picked) => picked.length === q.items.length && picked.every((pos, i) => pos === i);
+
+/** `pairs[leftIndex]` = index in q.right the player linked to that left item (-1 = none). */
+export const checkMatch = (q, pairs) => q.left.length === pairs.length && pairs.every((r, l) => r >= 0 && q.right[r]?.forLeft === l);
 
 /** Take n questions from a group, preferring ones not asked yet. When the group runs dry it starts a new cycle. */
 function takeFresh(group, n, asked, rng) {
@@ -91,22 +135,35 @@ export function newRound(questions, difficulty) {
     chosen: null, // option index, -1 = timed out, null = unanswered
     eliminated: [],
     done: false,
+    ok: null, // result of the current answer (true / false), null while unanswered
+    timedOut: false,
     log: [], // [{ id, ok }] in answer order
   };
 }
 
 export const current = (s) => s.questions[s.index];
 
-/** Record an answer (mutates and returns state). Ignored if already answered. */
-export function answer(s, optionIndex) {
+/** Records the outcome of the current question (every type ends here). Ignored if already answered. */
+function settle(s, ok, chosen) {
   if (s.done || s.chosen !== null) return s;
-  const opt = current(s).options[optionIndex];
-  s.chosen = opt ? optionIndex : -1;
-  s.log.push({ id: current(s).id, ok: !!opt?.ok });
-  if (opt?.ok) s.correct += 1;
+  s.chosen = chosen;
+  s.ok = ok;
+  s.timedOut = chosen === -1;
+  s.log.push({ id: current(s).id, ok });
+  if (ok) s.correct += 1;
   else s.lives -= 1;
   return s;
 }
+
+/** Record a tapped option (mutates and returns state). -1 = time ran out. */
+export function answer(s, optionIndex) {
+  const opt = current(s).options?.[optionIndex];
+  return settle(s, !!opt?.ok, opt ? optionIndex : -1);
+}
+
+export const answerText = (s, text, lang) => settle(s, checkText(current(s), text, lang), 0);
+export const answerOrder = (s, picked) => settle(s, checkOrder(current(s), picked), 0);
+export const answerMatch = (s, pairs) => settle(s, checkMatch(current(s), pairs), 0);
 
 export const timeout = (s) => answer(s, -1);
 
@@ -123,13 +180,15 @@ export function advance(s) {
   }
   s.index += 1;
   s.chosen = null;
+  s.ok = null;
+  s.timedOut = false;
   s.eliminated = [];
   return s;
 }
 
 /** Remove one wrong option (if hints remain). Returns the removed index or -1. */
 export function useHint(s) {
-  if (s.done || s.chosen !== null || s.hints <= 0) return -1;
+  if (s.done || s.chosen !== null || s.hints <= 0 || !isChoice(current(s))) return -1;
   const wrong = current(s)
     .options.map((o, i) => (o.ok || s.eliminated.includes(i) ? -1 : i))
     .filter((i) => i >= 0);

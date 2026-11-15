@@ -21,6 +21,7 @@ export function defaultSave() {
     stats: { answered: 0, correct: 0, rounds: 0 },
     achievements: {},
     seenIntro: false,
+    daily: { last: 0, streak: 0, best: 0, today: { day: 0, correct: 0, total: 0 } }, // daily challenge + streak
     asked: [], // question ids already shown (no repeats until a group is used up)
     mastered: [], // question ids answered correctly (and not missed since)
     review: {}, // missed question id -> { box: 0|1, due: day number } (spaced repetition)
@@ -46,6 +47,17 @@ function sanitizeReview(raw) {
     if (QID.test(id) && v && typeof v === 'object') out[id] = { box: int(v.box, 0, CONFIG.REVIEW_DAYS.length - 1), due: int(v.due, 0, 1e6) };
   }
   return out;
+}
+
+function sanitizeDaily(raw) {
+  const d = raw && typeof raw === 'object' ? raw : {};
+  const t = d.today && typeof d.today === 'object' ? d.today : {};
+  return {
+    last: int(d.last, 0, 1e6),
+    streak: int(d.streak, 0, 1e5),
+    best: int(d.best, 0, 1e5),
+    today: { day: int(t.day, 0, 1e6), correct: int(t.correct, 0, 20), total: int(t.total, 0, 20) },
+  };
 }
 
 function sanitizeSeen(raw) {
@@ -110,6 +122,7 @@ export function sanitizeSave(raw) {
     },
     achievements,
     seenIntro: raw.seenIntro === true,
+    daily: sanitizeDaily(raw.daily),
     asked: sanitizeIds(raw.asked, CONFIG.MAX_ASKED),
     mastered: sanitizeIds(raw.mastered, CONFIG.MAX_ASKED),
     review: sanitizeReview(raw.review),
@@ -229,4 +242,28 @@ export function worldMastery(s, bank, worldId, age = 0) {
   const pool = (bank[worldId] || []).filter((q) => !age || q.age === age);
   const known = pool.filter((q) => s.mastered.includes(q.id)).length;
   return { known, total: pool.length, pct: pool.length ? Math.round((known / pool.length) * 100) : 0 };
+}
+
+// ---------- daily challenge + streak ----------
+
+/** The streak the player can still see: it survives today and yesterday, then it is gone until they play again. */
+export const dailyStreak = (s, day) => (s.daily.last === day || s.daily.last === day - 1 ? s.daily.streak : 0);
+
+export const dailyDone = (s, day) => s.daily.today.day === day;
+
+/**
+ * Finishing the daily challenge: the first completion of a day extends (or restarts) the streak and pays one coin per
+ * correct answer (max DAILY_COINS_MAX) plus a bonus at streak milestones. Replaying the same day pays nothing.
+ */
+export function completeDaily(s, day, correct, total) {
+  if (dailyDone(s, day)) return { save: s, reward: { first: false, coins: 0, bonus: 0, streak: dailyStreak(s, day) } };
+  const streak = s.daily.last === day - 1 ? s.daily.streak + 1 : 1;
+  const bonus = CONFIG.DAILY_BONUS[streak] || 0;
+  const coins = Math.min(correct, CONFIG.DAILY_COINS_MAX) + bonus;
+  const save = {
+    ...s,
+    coins: s.coins + coins,
+    daily: { last: day, streak, best: Math.max(s.daily.best, streak), today: { day, correct, total } },
+  };
+  return { save, reward: { first: true, coins, bonus, streak } };
 }
