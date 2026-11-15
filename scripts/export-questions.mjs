@@ -8,7 +8,7 @@ import { WORLDS } from '../src/config.js';
 import ar from '../src/i18n/ar.js';
 
 export const HEADER = [
-  'المعرّف', 'العالم', 'المستوى', 'الفئة العمرية', 'التصنيف',
+  'المعرّف', 'العالم', 'المستوى', 'الفئة العمرية', 'النوع', 'التصنيف',
   'السؤال', 'الإجابة الصحيحة', 'الخيارات الخاطئة',
   'Question (EN)', 'Correct answer (EN)', 'Wrong options (EN)',
   'الشرح', 'Explanation (EN)', 'المصدر',
@@ -17,17 +17,25 @@ export const HEADER = [
 
 const cell = (v) => `"${String(v).replaceAll('"', '""')}"`;
 
+/** The right answer and the wrong options as text, per language, whatever the question type. */
+export function answers(q) {
+  const both = (fn) => ({ ar: fn('ar'), en: fn('en') });
+  if (q.type === 'fill') return { right: both((l) => q.a[l].join(' / ')), wrong: both(() => '') };
+  if (q.type === 'order') return { right: both((l) => q.items.map((i) => i[l]).join(' ← ')), wrong: both(() => '') };
+  if (q.type === 'match') return { right: both((l) => q.pairs.map((p) => `${p.l[l]} = ${p.r[l]}`).join(' | ')), wrong: both(() => '') };
+  return { right: both((l) => q.o[q.c][l]), wrong: both((l) => q.o.filter((_, i) => i !== q.c).map((x) => x[l]).join(' | ')) };
+}
+
 /** One row per question, in world order. */
 export function buildRows() {
   const rows = [];
   for (const w of WORLDS) {
     for (const q of QUESTIONS[w.id] || []) {
-      const right = q.o[q.c];
-      const wrong = q.o.filter((_, i) => i !== q.c);
+      const { right, wrong } = answers(q);
       rows.push([
-        q.id, ar[`world.${w.id}`], q.d, ar[`age.${q.age}`]?.replace(/^\S+\s/, '') ?? q.age, q.topic ?? '',
-        q.q.ar, right.ar, wrong.map((x) => x.ar).join(' | '),
-        q.q.en, right.en, wrong.map((x) => x.en).join(' | '),
+        q.id, ar[`world.${w.id}`], q.d, ar[`age.${q.age}`]?.replace(/^\S+\s/, '') ?? q.age, q.type ?? 'mc', q.topic ?? '',
+        q.q.ar, right.ar, wrong.ar,
+        q.q.en, right.en, wrong.en,
         q.e?.ar ?? '', q.e?.en ?? '', '',
         '', '',
       ]);
