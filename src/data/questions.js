@@ -10,6 +10,15 @@ import moreGeneral from './more/general.js';
 import tech from './more/tech.js';
 import nature from './more/nature.js';
 import health from './more/health.js';
+import { EXPLAIN } from './explain.js';
+import xMath from './extra/math.js';
+import xHistory from './extra/history.js';
+import xScience from './extra/science.js';
+import xLanguages from './extra/languages.js';
+import xGeneral from './extra/general.js';
+import xTech from './extra/tech.js';
+import xNature from './extra/nature.js';
+import xHealth from './extra/health.js';
 
 const BASE = {
   math: [
@@ -75,7 +84,12 @@ const BASE = {
 };
 
 const EXTRA = { math: moreMath, history: moreHistory, science: moreScience, languages: moreLanguages, general: moreGeneral, tech, nature, health };
+// v0.7: 40 more questions per world (age groups 1 and 3, plus the missing level tiers of group 2), each with an explanation.
+const NEW = { math: xMath, history: xHistory, science: xScience, languages: xLanguages, general: xGeneral, tech: xTech, nature: xNature, health: xHealth };
+
+// Questions written before age groups existed: level 1 = kids (1), level 2 = juniors (2). Explanations for them live in explain.js.
+const norm = (q) => ({ ...q, age: q.age ?? (q.d === 1 ? 1 : 2), e: q.e ?? EXPLAIN[q.id] ?? null });
 
 export const QUESTIONS = Object.freeze(
-  Object.fromEntries(Object.keys(EXTRA).map((id) => [id, Object.freeze([...(BASE[id] || []), ...EXTRA[id]])])),
+  Object.fromEntries(Object.keys(EXTRA).map((id) => [id, Object.freeze([...(BASE[id] || []), ...EXTRA[id], ...NEW[id]].map(norm))])),
 );
