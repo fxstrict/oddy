@@ -98,6 +98,7 @@
           <p id="menu-hello" class="hello" hidden></p>
           <p class="tagline" data-i18n="app.tagline"></p>
           <button id="menu-news" class="btn btn--news" type="button" hidden></button>
+          <button id="btn-daily" class="btn btn--daily" type="button"></button>
           <nav class="menu-list" aria-label="menu">
             <button class="btn btn--primary btn--big" type="button" data-nav="play" data-i18n="menu.play"></button>
             <button class="btn" type="button" data-nav="achievements" data-i18n="menu.achievements"></button>
@@ -131,7 +132,11 @@
         </div>
         <div id="timer-bar" class="timer-bar" hidden><span></span></div>
         <div class="panel panel--question">
-          <p id="q-text" class="question"></p>
+          <div class="qhead">
+            <p id="q-text" class="question"></p>
+            <button id="btn-speak" class="btn btn--small btn--speak" type="button" hidden>🗣️</button>
+          </div>
+          <div id="q-widget" class="widget" hidden></div>
           <div id="q-options" class="options"></div>
           <p id="q-feedback" class="feedback" role="status"></p>
           <p id="q-explain" class="explain" role="status" hidden></p>
@@ -189,6 +194,7 @@
 
           <div class="field">
             <label class="choice"><input type="checkbox" id="opt-sound"> <span data-i18n="settings.soundOn"></span></label>
+            <label class="choice"><input type="checkbox" id="opt-read"> <span data-i18n="settings.readOn"></span></label>
             <label class="choice"><input type="checkbox" id="opt-motion"> <span data-i18n="settings.reducedMotion"></span></label>
           </div>
           <button id="btn-reset" class="btn btn--danger" type="button" data-i18n="settings.reset"></button>
