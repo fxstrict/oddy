@@ -16,16 +16,66 @@ export function shuffle(list, rng = Math.random) {
   return a;
 }
 
-/** Pick ROUND_SIZE questions of the level's tier and shuffle options. */
-export function buildRound(bank, worldId, level, rng = Math.random) {
-  const pool = (bank[worldId] || []).filter((q) => q.d === level);
-  return shuffle(pool, rng)
-    .slice(0, CONFIG.ROUND_SIZE)
-    .map((q) => ({
-      id: q.id,
-      q: q.q,
-      options: shuffle(q.o.map((text, i) => ({ text, ok: i === q.c })), rng),
-    }));
+const toRound = (picked, rng) =>
+  picked.map((q) => ({
+    id: q.id,
+    q: q.q,
+    e: q.e || null,
+    options: shuffle(q.o.map((text, i) => ({ text, ok: i === q.c })), rng),
+  }));
+
+/** Take n questions from a group, preferring ones not asked yet. When the group runs dry it starts a new cycle. */
+function takeFresh(group, n, asked, rng) {
+  if (n <= 0 || !group.length) return { picks: [], reset: false };
+  const fresh = group.filter((q) => !asked.has(q.id));
+  if (fresh.length >= n) return { picks: shuffle(fresh, rng).slice(0, n), reset: false };
+  const used = group.filter((q) => asked.has(q.id));
+  return { picks: [...fresh, ...shuffle(used, rng).slice(0, n - fresh.length)], reset: true };
+}
+
+/**
+ * Build a round without repeating questions until the player's group is used up.
+ * age = 1..3 draws mostly from that age group (plus NEXT_AGE_MIX from the next one); 0 = every age.
+ * asked = ids already shown. Returns { questions, asked } where `asked` is the updated list to store.
+ */
+export function planRound(bank, worldId, level, { age = 0, asked = [], rng = Math.random } = {}) {
+  const size = CONFIG.ROUND_SIZE;
+  const all = (bank[worldId] || []).filter((q) => q.d === level);
+  const seen = new Set(asked);
+  let plan = [[all, size]];
+  if (age) {
+    const own = all.filter((q) => q.age === age);
+    const next = all.filter((q) => q.age === age + 1);
+    const mix = own.length >= size && next.length ? Math.min(CONFIG.NEXT_AGE_MIX, next.length) : 0;
+    plan = [[own, size - mix], [next, mix]];
+  }
+  const picked = [];
+  for (const [group, n] of plan) {
+    const r = takeFresh(group, n, seen, rng);
+    if (r.reset) for (const q of group) seen.delete(q.id);
+    picked.push(...r.picks);
+  }
+  if (picked.length < size) {
+    const have = new Set(picked.map((q) => q.id));
+    const rest = all.filter((q) => !have.has(q.id));
+    const extra = [...shuffle(rest.filter((q) => !seen.has(q.id)), rng), ...shuffle(rest.filter((q) => seen.has(q.id)), rng)];
+    picked.push(...extra.slice(0, size - picked.length));
+  }
+  for (const q of picked) seen.add(q.id);
+  return { questions: toRound(shuffle(picked, rng), rng), asked: [...seen].slice(-CONFIG.MAX_ASKED) };
+}
+
+/** Pick ROUND_SIZE questions of the level's tier and shuffle options (no memory of earlier rounds). */
+export function buildRound(bank, worldId, level, rng = Math.random, opts = {}) {
+  return planRound(bank, worldId, level, { ...opts, rng }).questions;
+}
+
+/** Practice round made of specific question ids (looked up in every world), at most ROUND_SIZE. */
+export function buildReview(bank, ids, rng = Math.random) {
+  const byId = new Map();
+  for (const list of Object.values(bank)) for (const q of list) byId.set(q.id, q);
+  const picked = ids.map((id) => byId.get(id)).filter(Boolean).slice(0, CONFIG.ROUND_SIZE);
+  return toRound(shuffle(picked, rng), rng);
 }
 
 export function newRound(questions, difficulty) {
@@ -41,6 +91,7 @@ export function newRound(questions, difficulty) {
     chosen: null, // option index, -1 = timed out, null = unanswered
     eliminated: [],
     done: false,
+    log: [], // [{ id, ok }] in answer order
   };
 }
 
@@ -51,6 +102,7 @@ export function answer(s, optionIndex) {
   if (s.done || s.chosen !== null) return s;
   const opt = current(s).options[optionIndex];
   s.chosen = opt ? optionIndex : -1;
+  s.log.push({ id: current(s).id, ok: !!opt?.ok });
   if (opt?.ok) s.correct += 1;
   else s.lives -= 1;
   return s;

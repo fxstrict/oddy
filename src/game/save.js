@@ -21,10 +21,60 @@ export function defaultSave() {
     stats: { answered: 0, correct: 0, rounds: 0 },
     achievements: {},
     seenIntro: false,
+    asked: [], // question ids already shown (no repeats until a group is used up)
+    mastered: [], // question ids answered correctly (and not missed since)
+    review: {}, // missed question id -> { box: 0|1, due: day number } (spaced repetition)
+    seenWorlds: null, // world id -> stages the player has already seen; null = not recorded yet (see baselineSeen)
   };
 }
 
 const int = (n, min, max) => (Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : min);
+
+const QID = /^[A-Za-z0-9_-]{1,16}$/;
+
+function sanitizeIds(raw, max) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  for (const x of raw) if (typeof x === 'string' && QID.test(x)) seen.add(x);
+  return [...seen].slice(-max);
+}
+
+function sanitizeReview(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, v] of Object.entries(raw).slice(0, 600)) {
+    if (QID.test(id) && v && typeof v === 'object') out[id] = { box: int(v.box, 0, CONFIG.REVIEW_DAYS.length - 1), due: int(v.due, 0, 1e6) };
+  }
+  return out;
+}
+
+function sanitizeSeen(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out = {};
+  for (const w of WORLDS) if (raw[w.id] !== undefined) out[w.id] = int(raw[w.id], 0, 99);
+  return out;
+}
+
+/** First run of a build that knows about "new" markers: everything that exists now counts as already seen. */
+export function baselineSeen(s) {
+  if (s.seenWorlds) return s;
+  return { ...s, seenWorlds: Object.fromEntries(WORLDS.map((w) => [w.id, CONFIG.LEVELS_PER_WORLD])) };
+}
+
+/** 'world' = island the player has never opened, 'levels' = stages were added since they last opened it, else null. */
+export function newMark(s, worldId) {
+  if (!s.seenWorlds) return null;
+  if (!(worldId in s.seenWorlds)) return 'world';
+  return s.seenWorlds[worldId] < CONFIG.LEVELS_PER_WORLD ? 'levels' : null;
+}
+
+export const newWorldIds = (s) => WORLDS.map((w) => w.id).filter((id) => newMark(s, id) === 'world');
+export const hasNewContent = (s) => WORLDS.some((w) => newMark(s, w.id));
+
+export function markSeen(s, worldId) {
+  if (!s.seenWorlds || newMark(s, worldId) === null) return s;
+  return { ...s, seenWorlds: { ...s.seenWorlds, [worldId]: CONFIG.LEVELS_PER_WORLD } };
+}
 
 /** Validate and migrate unknown data into the current save shape. */
 export function sanitizeSave(raw) {
@@ -60,6 +110,10 @@ export function sanitizeSave(raw) {
     },
     achievements,
     seenIntro: raw.seenIntro === true,
+    asked: sanitizeIds(raw.asked, CONFIG.MAX_ASKED),
+    mastered: sanitizeIds(raw.mastered, CONFIG.MAX_ASKED),
+    review: sanitizeReview(raw.review),
+    seenWorlds: sanitizeSeen(raw.seenWorlds),
   };
 }
 
@@ -133,4 +187,46 @@ export function applyRoundResult(save, { world, level, correct, total, stars }) 
     }
   }
   return { save: next, reward: { coins, stars, improved: gain > 0 }, newAchievements };
+}
+
+// ---------- learning: mastery + spaced review of mistakes ----------
+
+/** Local calendar day number (so "tomorrow" means the next day on the player's clock). */
+export const dayNumber = (now = Date.now()) => Math.floor((now - new Date(now).getTimezoneOffset() * 60000) / 86400000);
+
+/**
+ * Record one answer. Wrong: the question joins the review list (due tomorrow) and stops counting as mastered.
+ * Right: it counts as mastered; if it was in the review list and is due, it moves up one step (and leaves the list after the last).
+ */
+export function recordAnswer(s, id, ok, day) {
+  const review = { ...s.review };
+  let mastered = s.mastered;
+  const cur = review[id];
+  if (ok) {
+    if (!mastered.includes(id)) mastered = [...mastered, id].slice(-CONFIG.MAX_ASKED);
+    if (cur && day >= cur.due) {
+      if (cur.box + 1 >= CONFIG.REVIEW_DAYS.length) delete review[id];
+      else review[id] = { box: cur.box + 1, due: day + CONFIG.REVIEW_DAYS[cur.box + 1] };
+    }
+  } else {
+    mastered = mastered.filter((x) => x !== id);
+    review[id] = { box: 0, due: day + CONFIG.REVIEW_DAYS[0] };
+  }
+  return { ...s, review, mastered };
+}
+
+/** Missed questions, the ones that are due first (oldest due date first). */
+export function reviewQueue(s, day) {
+  return Object.entries(s.review)
+    .sort((a, b) => Number(a[1].due > day) - Number(b[1].due > day) || a[1].due - b[1].due)
+    .map(([id]) => id);
+}
+
+export const reviewDue = (s, day) => Object.values(s.review).filter((r) => r.due <= day).length;
+
+/** Share of the world's questions (for the player's age group, 0 = all) that are currently mastered. */
+export function worldMastery(s, bank, worldId, age = 0) {
+  const pool = (bank[worldId] || []).filter((q) => !age || q.age === age);
+  const known = pool.filter((q) => s.mastered.includes(q.id)).length;
+  return { known, total: pool.length, pct: pool.length ? Math.round((known / pool.length) * 100) : 0 };
 }
