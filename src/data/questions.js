@@ -11,6 +11,7 @@ import tech from './more/tech.js';
 import nature from './more/nature.js';
 import health from './more/health.js';
 import { EXPLAIN } from './explain.js';
+import { TYPED } from './types.js';
 import xMath from './extra/math.js';
 import xHistory from './extra/history.js';
 import xScience from './extra/science.js';
@@ -91,5 +92,5 @@ const NEW = { math: xMath, history: xHistory, science: xScience, languages: xLan
 const norm = (q) => ({ ...q, age: q.age ?? (q.d === 1 ? 1 : 2), e: q.e ?? EXPLAIN[q.id] ?? null });
 
 export const QUESTIONS = Object.freeze(
-  Object.fromEntries(Object.keys(EXTRA).map((id) => [id, Object.freeze([...(BASE[id] || []), ...EXTRA[id], ...NEW[id]].map(norm))])),
+  Object.fromEntries(Object.keys(EXTRA).map((id) => [id, Object.freeze([...(BASE[id] || []), ...EXTRA[id], ...NEW[id], ...(TYPED[id] || [])].map(norm))])),
 );
