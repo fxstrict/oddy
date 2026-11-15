@@ -48,6 +48,7 @@ const router = createRouter(document, {
   onChange(name) {
     document.body.dataset.scene = SCENES[name] || 'menu';
     if (name === 'play') game.renderMap();
+    if (name === 'menu') game.renderDaily();
     if (name === 'achievements') renderAchievements();
   },
   onEscape: (name) => game.handleEscape(name),
@@ -162,12 +163,14 @@ function render() {
   $('opt-age').value = String(ageOf(prefs));
   document.body.dataset.age = String(ageOf(prefs));
   $('opt-sound').checked = !prefs.muted;
+  $('opt-read').checked = prefs.read;
   $('opt-motion').checked = prefs.reducedMotion;
   if (document.activeElement !== $('opt-name')) $('opt-name').value = save.profile.name;
   renderStatic();
   renderAvatars();
   if (router.current === 'play') game.renderMap();
   if (router.current === 'achievements') renderAchievements();
+  game.renderDaily();
   game.refresh();
 }
 
@@ -193,7 +196,7 @@ function askAge() {
     const dlg = $('dlg-age');
     const done = (age) => {
       dlg.close();
-      if (age) update({ age, ...(age === 1 ? { difficulty: 'easy' } : {}) });
+      if (age) update({ age, ...(age === 1 ? { difficulty: 'easy', read: true } : {}) });
       resolve();
     };
     dlg.querySelectorAll('[data-age]').forEach((b) => (b.onclick = () => done(Number(b.dataset.age))));
@@ -237,6 +240,7 @@ $('opt-age').addEventListener('change', (e) => {
   if (CONFIG.AGES.includes(age)) update({ age });
 });
 $('opt-sound').addEventListener('change', (e) => update({ muted: !e.target.checked }));
+$('opt-read').addEventListener('change', (e) => update({ read: e.target.checked }));
 $('opt-motion').addEventListener('change', (e) => update({ reducedMotion: e.target.checked }));
 $('opt-name').addEventListener('input', (e) => {
   save = { ...save, profile: { ...save.profile, name: e.target.value.replace(/[<>]/g, '').slice(0, 20) } };

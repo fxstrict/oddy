@@ -16,6 +16,9 @@ export const CONFIG = Object.freeze({
   NEXT_AGE_MIX: 1, // questions per round borrowed from the next age group
   REVIEW_DAYS: Object.freeze([1, 3]), // spaced repetition: a missed question returns after 1 day, then after 3
   MAX_ASKED: 600,
+  DAILY_SIZE: 5, // questions in the daily challenge
+  DAILY_COINS_MAX: 5, // one coin per correct answer, once per day
+  DAILY_BONUS: Object.freeze({ 3: 10, 7: 25, 30: 100 }), // streak milestone -> bonus coins
   AVATARS: Object.freeze(['🦊', '🐼', '🦉', '🐯', '🐸', '🦄', '🐙', '🚀']),
 });
 
