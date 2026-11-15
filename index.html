@@ -11,14 +11,14 @@
   <meta name="robots" content="index, follow, max-image-preview:large">
   <title>رحلة المعرفة | Knowledge Quest</title>
   <meta name="author" content="الطالبة هدى محمد - إشراف الدكتورة فاطمة سعد">
-  <link rel="canonical" href="__SITE_URL__">
+  <link rel="canonical" href="https://fxstrict.github.io/oddy/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="رحلة المعرفة | Knowledge Quest">
   <meta property="og:title" content="رحلة المعرفة | Knowledge Quest ✨">
   <meta property="og:description" content="لعبة مغامرات تعليمية: ٨ عوالم، نجوم وإنجازات، عربي وإنجليزي، وتعمل بدون إنترنت. عمل الطالبة هدى محمد تحت إشراف الدكتورة فاطمة سعد.">
-  <meta property="og:url" content="__SITE_URL__">
-  <meta property="og:image" content="__SITE_URL__assets/img/og-image.jpg">
-  <meta property="og:image:secure_url" content="__SITE_URL__assets/img/og-image.jpg">
+  <meta property="og:url" content="https://fxstrict.github.io/oddy/">
+  <meta property="og:image" content="https://fxstrict.github.io/oddy/assets/img/og-image.jpg">
+  <meta property="og:image:secure_url" content="https://fxstrict.github.io/oddy/assets/img/og-image.jpg">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -28,7 +28,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="رحلة المعرفة | Knowledge Quest ✨">
   <meta name="twitter:description" content="لعبة مغامرات تعليمية تعمل بدون إنترنت. عمل الطالبة هدى محمد تحت إشراف الدكتورة فاطمة سعد.">
-  <meta name="twitter:image" content="__SITE_URL__assets/img/og-image.jpg">
+  <meta name="twitter:image" content="https://fxstrict.github.io/oddy/assets/img/og-image.jpg">
   <meta name="twitter:image:alt" content="رحلة المعرفة - عمل الطالبة هدى محمد تحت إشراف الدكتورة فاطمة سعد">
   <script type="application/ld+json">
   {
@@ -37,8 +37,8 @@
     "name": "رحلة المعرفة | Knowledge Quest",
     "alternateName": ["رحلة المعرفة", "Knowledge Quest"],
     "description": "لعبة مغامرات تعليمية بثمانية عوالم، عربي وإنجليزي، تعمل بدون إنترنت. عمل الطالبة هدى محمد تحت إشراف الدكتورة فاطمة سعد.",
-    "url": "__SITE_URL__",
-    "image": "__SITE_URL__assets/img/og-image.jpg",
+    "url": "https://fxstrict.github.io/oddy/",
+    "image": "https://fxstrict.github.io/oddy/assets/img/og-image.jpg",
     "genre": ["Educational", "Adventure", "Quiz"],
     "inLanguage": ["ar", "en"],
     "playMode": "SinglePlayer",
@@ -97,11 +97,13 @@
           <h2 id="menu-title" data-focus-target tabindex="-1" data-i18n="menu.title">القائمة الرئيسية</h2>
           <p id="menu-hello" class="hello" hidden></p>
           <p class="tagline" data-i18n="app.tagline"></p>
+          <button id="menu-news" class="btn btn--news" type="button" hidden></button>
           <nav class="menu-list" aria-label="menu">
             <button class="btn btn--primary btn--big" type="button" data-nav="play" data-i18n="menu.play"></button>
             <button class="btn" type="button" data-nav="achievements" data-i18n="menu.achievements"></button>
             <button class="btn" type="button" data-nav="settings" data-i18n="menu.settings"></button>
             <button class="btn" type="button" data-nav="help" data-i18n="menu.help"></button>
+            <button id="btn-invite" class="btn btn--invite" type="button" data-i18n="menu.invite"></button>
             <button id="btn-install" class="btn btn--accent" type="button" hidden data-i18n="menu.install"></button>
           </nav>
           <p class="credit"><span data-i18n="credit.by"></span><br><span data-i18n="credit.sup"></span></p>
@@ -112,6 +114,7 @@
       <section data-screen="play" class="screen" aria-labelledby="play-title" hidden>
         <h2 id="play-title" data-focus-target tabindex="-1" data-i18n="play.title"></h2>
         <p class="muted" data-i18n="play.hint"></p>
+        <button id="btn-review" class="btn btn--accent" type="button" hidden></button>
         <div id="map" class="map" role="group" aria-labelledby="play-title"></div>
         <ul id="world-list" class="world-list"></ul>
         <button class="btn" type="button" data-nav="menu" data-i18n="a11y.back"></button>
@@ -131,8 +134,10 @@
           <p id="q-text" class="question"></p>
           <div id="q-options" class="options"></div>
           <p id="q-feedback" class="feedback" role="status"></p>
+          <p id="q-explain" class="explain" role="status" hidden></p>
           <div class="actions">
             <button id="btn-hint" class="btn btn--small" type="button"></button>
+            <button id="btn-q-share" class="btn btn--small" type="button" hidden></button>
             <button id="btn-next" class="btn btn--primary" type="button" hidden></button>
           </div>
         </div>
@@ -163,6 +168,15 @@
             <label class="choice"><input type="radio" name="opt-lang" id="opt-lang-ar" value="ar"> <span lang="ar">العربية</span></label>
             <label class="choice"><input type="radio" name="opt-lang" id="opt-lang-en" value="en"> <span lang="en">English</span></label>
           </fieldset>
+
+          <div class="field">
+            <label for="opt-age" data-i18n="settings.age"></label>
+            <select id="opt-age" class="input">
+              <option value="1" data-i18n="age.1"></option>
+              <option value="2" data-i18n="age.2"></option>
+              <option value="3" data-i18n="age.3"></option>
+            </select>
+          </div>
 
           <div class="field">
             <label for="opt-difficulty" data-i18n="settings.difficulty"></label>
@@ -207,6 +221,9 @@
   <dialog id="dlg-world" class="dlg" aria-labelledby="dlg-world-title">
     <h3 id="dlg-world-title"></h3>
     <p id="dlg-world-stars" class="muted"></p>
+    <p id="dlg-world-mastery" class="muted"></p>
+    <progress id="dlg-world-mastery-bar" class="mastery" max="100" value="0" aria-hidden="true"></progress>
+    <p id="dlg-world-story" class="story"></p>
     <div id="dlg-world-levels" class="levels"></div>
     <button class="btn" type="button" data-close data-i18n="a11y.close"></button>
   </dialog>
@@ -219,6 +236,16 @@
     <div class="levels levels--row">
       <button id="intro-skip" class="btn" type="button" data-i18n="intro.skip"></button>
       <button id="intro-next" class="btn btn--primary" type="button"></button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-age" class="dlg" aria-labelledby="age-title">
+    <h3 id="age-title" tabindex="-1" data-i18n="age.title"></h3>
+    <p class="muted" data-i18n="age.desc"></p>
+    <div class="levels">
+      <button class="btn btn--primary age-btn" type="button" data-age="1"><strong data-i18n="age.1"></strong><span data-i18n="age.1.desc"></span></button>
+      <button class="btn btn--primary age-btn" type="button" data-age="2"><strong data-i18n="age.2"></strong><span data-i18n="age.2.desc"></span></button>
+      <button class="btn btn--primary age-btn" type="button" data-age="3"><strong data-i18n="age.3"></strong><span data-i18n="age.3.desc"></span></button>
     </div>
   </dialog>
 
@@ -244,9 +271,12 @@
     <p id="result-stars" class="stars-big" aria-hidden="true"></p>
     <p id="result-score"></p>
     <p id="result-coins" class="muted"></p>
+    <p id="result-vs" class="vs" role="status"></p>
+    <p id="result-fact" class="fact" hidden></p>
     <ul id="result-ach" class="result-ach"></ul>
     <div class="levels">
       <button id="result-next" class="btn btn--primary" type="button" hidden data-i18n="result.next"></button>
+      <button id="result-share" class="btn btn--invite" type="button" hidden data-i18n="share.level"></button>
       <button id="result-again" class="btn" type="button" data-i18n="result.again"></button>
       <button id="result-map" class="btn" type="button" data-i18n="result.map"></button>
     </div>
@@ -256,11 +286,39 @@
     <p class="update__icon" aria-hidden="true">🎁</p>
     <h3 id="update-title" data-i18n="update.title"></h3>
     <p id="update-text" data-i18n="update.text"></p>
+    <ul id="update-news" class="news" hidden></ul>
     <p id="update-error" class="muted" role="alert" hidden></p>
     <div class="levels levels--row">
       <button id="update-later" class="btn" type="button" data-i18n="update.later"></button>
       <button id="update-now" class="btn btn--primary" type="button" data-i18n="update.now"></button>
     </div>
+  </dialog>
+
+  <dialog id="dlg-share" class="dlg" aria-labelledby="share-title">
+    <h3 id="share-title" data-i18n="share.title"></h3>
+    <textarea id="share-text" class="input share-text" rows="4" readonly></textarea>
+    <div class="levels">
+      <a id="share-wa" class="btn btn--primary" href="#" target="_blank" rel="noopener noreferrer" data-i18n="share.whatsapp"></a>
+      <a id="share-tg" class="btn" href="#" target="_blank" rel="noopener noreferrer" data-i18n="share.telegram"></a>
+      <button id="share-copy" class="btn" type="button" data-i18n="share.copy"></button>
+      <button class="btn" type="button" data-close data-i18n="a11y.close"></button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-challenge" class="dlg" aria-labelledby="ch-title">
+    <p class="update__icon" aria-hidden="true">⚔️</p>
+    <h3 id="ch-title"></h3>
+    <p id="ch-text" class="question question--dlg"></p>
+    <div id="ch-options" class="options"></div>
+    <p id="ch-result" class="feedback" role="status"></p>
+    <div class="levels">
+      <button id="ch-accept" class="btn btn--primary" type="button" hidden data-i18n="challenge.accept"></button>
+    </div>
+    <div id="ch-actions" class="levels" hidden>
+      <button id="ch-play" class="btn btn--primary" type="button" data-i18n="challenge.play"></button>
+      <button id="ch-share" class="btn" type="button" data-i18n="challenge.pass"></button>
+    </div>
+    <button id="ch-close" class="btn" type="button" data-i18n="a11y.close"></button>
   </dialog>
 
   <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
