@@ -12,10 +12,13 @@ test('review export has one row per question with the right answer separated fro
   assert.ok([qAr, rightAr, wrongAr, qEn, rightEn, wrongEn, exAr, exEn, col('الفئة العمرية'), col('التصنيف'), col('المصدر')].every((i) => i >= 0));
   for (const r of rows) {
     assert.equal(r.length, HEADER.length);
-    assert.ok(r[qAr] && r[rightAr] && r[wrongAr] && r[qEn] && r[rightEn] && r[wrongEn], `incomplete row ${r[0]}`);
+    const typ = r[col('النوع')];
+    assert.ok(r[qAr] && r[rightAr] && r[qEn] && r[rightEn], `incomplete row ${r[0]}`);
     assert.ok(r[exAr] && r[exEn] && r[col('الفئة العمرية')], `${r[0]} needs an explanation and an age group`);
-    assert.ok(!r[wrongAr].split(' | ').includes(r[rightAr]) || new Set(r[wrongAr].split(' | ')).size < 3, `${r[0]} wrong options contain the answer`);
-    assert.equal(r[wrongAr].split(' | ').length, 3, `${r[0]} should list 3 wrong options`);
+    const wantWrong = { mc: 3, tf: 1 }[typ] ?? 0;
+    assert.equal(r[wrongAr] ? r[wrongAr].split(' | ').length : 0, wantWrong, `${r[0]} (${typ}) wrong options`);
+    assert.equal(r[wrongEn] ? r[wrongEn].split(' | ').length : 0, wantWrong, `${r[0]} (${typ}) wrong options EN`);
+    assert.ok(!r[wrongAr].split(' | ').includes(r[rightAr]), `${r[0]} wrong options contain the answer`);
   }
 });
 

@@ -25,8 +25,8 @@ test('sanitize rejects invalid values', () => {
 
 test('save then load round-trips', () => {
   const s = fakeStorage();
-  savePrefs(s, { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3 });
-  assert.deepEqual(loadPrefs(s), { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3 });
+  savePrefs(s, { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3, read: true });
+  assert.deepEqual(loadPrefs(s), { lang: 'en', difficulty: 'easy', muted: true, reducedMotion: true, age: 3, read: true });
 });
 
 test('corrupt JSON falls back to defaults without throwing', () => {

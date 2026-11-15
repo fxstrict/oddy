@@ -10,13 +10,14 @@ import { sanitizePrefs, ageOf, defaultPrefs } from '../src/ui/prefs.js';
 const seeded = (seed = 7) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const ids = (round) => round.map((q) => q.id);
 
-test('every world has 60 questions: 10 per level tier and age group', () => {
+test('every world has 60 multiple-choice questions (10 per level tier and age group) plus other types', () => {
   for (const w of WORLDS) {
     const list = QUESTIONS[w.id];
-    assert.equal(list.length, 60, `${w.id} has ${list.length}`);
+    assert.equal(list.filter((q) => !q.type).length, 60, `${w.id} multiple choice`);
+    assert.ok(list.length >= 67, `${w.id} has ${list.length}`);
     for (let d = 1; d <= CONFIG.LEVELS_PER_WORLD; d++) {
       for (const age of CONFIG.AGES) {
-        const n = list.filter((q) => q.d === d && q.age === age).length;
+        const n = list.filter((q) => q.d === d && q.age === age && !q.type).length;
         assert.equal(n, 10, `${w.id} level ${d} age ${age} has ${n}`);
       }
     }
@@ -118,10 +119,11 @@ test('due review questions come first in the queue', () => {
 });
 
 test('mastery counts correct answers within the age group of a world', () => {
-  const kids = QUESTIONS.math.filter((q) => q.age === 1).slice(0, 5).map((q) => q.id);
+  const pool = QUESTIONS.math.filter((q) => q.age === 1);
+  const kids = pool.slice(0, 5).map((q) => q.id);
   let save = s.defaultSave();
   for (const id of kids) save = s.recordAnswer(save, id, true, 1);
-  assert.deepEqual(s.worldMastery(save, QUESTIONS, 'math', 1), { known: 5, total: 20, pct: 25 });
+  assert.deepEqual(s.worldMastery(save, QUESTIONS, 'math', 1), { known: 5, total: pool.length, pct: Math.round((5 / pool.length) * 100) });
   assert.equal(s.worldMastery(save, QUESTIONS, 'math', 3).known, 0);
 });
 

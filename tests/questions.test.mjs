@@ -40,13 +40,14 @@ test('questions are well formed in both languages', () => {
     for (const q of list) {
       assert.ok(!ids.has(q.id), `duplicate id ${q.id}`);
       ids.add(q.id);
-      assert.equal(q.o.length, 4, `${q.id} needs 4 options`);
-      assert.ok(Number.isInteger(q.c) && q.c >= 0 && q.c < 4, `${q.id} bad correct index`);
+      const want = q.type === 'tf' ? 2 : q.type === 'fill' || q.type === 'order' || q.type === 'match' ? 0 : 4;
+      assert.equal(q.o.length, want, `${q.id} needs ${want} options`);
+      assert.ok(want === 0 ? q.c === 0 : Number.isInteger(q.c) && q.c >= 0 && q.c < want, `${q.id} bad correct index`);
       for (const lang of CONFIG.LANGS) {
         assert.ok(q.q[lang]?.trim(), `${q.id} missing ${lang} text`);
         const texts = q.o.map((o) => o[lang]);
         assert.ok(texts.every((x) => x?.trim()), `${q.id} empty ${lang} option`);
-        assert.equal(new Set(texts).size, 4, `${q.id} duplicate ${lang} options`);
+        assert.equal(new Set(texts).size, want, `${q.id} duplicate ${lang} options`);
       }
     }
   }
